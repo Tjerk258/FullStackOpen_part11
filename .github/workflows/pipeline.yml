@@ -1,0 +1,61 @@
+name: Deployment pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+jobs:
+  simple_deployment_pipeline:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm install
+      - name: Check style
+        run: npm run lint
+      - name: build:ui
+        run: npm run build
+      - name: Install Deploy Dependencies
+        uses: superfly/flyctl-actions/setup-flyctl@master
+        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message), '#skip') == false }}
+      - name: Deploy App
+        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message), '#skip') == false }}
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Build Failure
+        uses: rjstone/discord-webhook-notify@v1
+        if: failure()
+        with:
+          text: Build failed
+          severity: error
+          description: commit ${{ github.sha }} broke the build.
+          footer: "Sevirity: Error"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump version and push tag
+        if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message), '#skip') == false }}
+        uses: anothrNick/github-tag-action@1.67.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: New version succesvol
+        uses: rjstone/discord-webhook-notify@v1
+        if: success()
+        with:
+          text: A new version of Pokedex deployed
+          severity: info
+          description: to https://full-stack-open-pokedex-335.fly.dev
+          footer: "Sevirity: Error"
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
