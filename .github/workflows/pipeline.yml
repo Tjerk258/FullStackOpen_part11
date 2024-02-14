@@ -21,7 +21,7 @@ jobs:
       - name: Check style
         run: npm run lint
       - name: build:ui
-        run: npm run build
+        run: npm run build:ui
       - name: Install Deploy Dependencies
         uses: superfly/flyctl-actions/setup-flyctl@master
         if: ${{ github.event_name == 'push' && contains(join(github.event.commits.*.message), '#skip') == false }}
