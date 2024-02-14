@@ -18,6 +18,8 @@ jobs:
           node-version: '18'
       - name: Install dependencies
         run: npm install
+      - name: Install Frontend dependencies
+        run: cd Frontend/ && npm install && cd ../
       - name: Check style
         run: npm run lint
       - name: build:ui
